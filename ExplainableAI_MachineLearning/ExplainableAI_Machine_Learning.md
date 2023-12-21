@@ -1,5 +1,4 @@
 # ExplainableAI Machine Learning
-
 Author: Huang,Shu-Jing
 Date: 2023-11-28
 
@@ -129,6 +128,7 @@ plt.figure(figsize=(10, 8))
 shap.summary_plot(shap_values[1], KIRC_GeneExprpre, feature_names=KIRC_feature_names,max_display=20)
 plt.savefig('Figure/KIRC_SHAP_late.png', dpi=300, bbox_inches='tight')
 plt.close()
+
 # Force_plot for alive(plot for the j-th sample, plot for the j-th sample)
 def shap_plot(i,j):
     explainerModel = shap.TreeExplainer(gbm)
@@ -148,6 +148,24 @@ def shap_plot(i,j):
 shap_plot(0,2)
 shap_plot(1,2)
 shap_plot(0,1)
+
+# Dependence plot for dead
+def plot_dependence(model, cancertype, gene, GeneExpr, GeneExprpre):
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(GeneExprpre)
+    gene_column = GeneExpr.columns[GeneExpr.columns.str.contains(gene)]
+    gene_column = gene_column.tolist()[0]
+    gene_num = GeneExpr.columns.get_loc(gene_column)
+    plt.figure(figsize=(10, 8))
+    shap.dependence_plot(gene_num, shap_values[1], GeneExprpre, interaction_index=None)
+    plt.xlabel(gene_column, fontsize=10)
+    plt.ylabel(f'SHAP value of {gene}', fontsize=10)
+    plt.savefig(f'Figure/{cancertype}SHAPlatedependenceplot{gene}.png', dpi=300, bbox_inches='tight')
+    plt.close()
+
+plot_dependence(gbm, 'KIRC', 'FBXO48', KIRC_GeneExpr, KIRC_GeneExprpre)
+plot_dependence(gbm, 'KIRC', 'GPR108', KIRC_GeneExpr, KIRC_GeneExprpre)
+plot_dependence(gbm, 'KIRC', 'VCPIP1', KIRC_GeneExpr, KIRC_GeneExprpre)
 ```
 
 
@@ -265,6 +283,24 @@ shap_plot(0,2)
 shap_plot(1,2)
 shap_plot(0,88)
 shap_plot(1,88)
+
+# Dependence plot for dead
+def plot_dependence(model, cancertype, gene, GeneExpr, GeneExprpre):
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(GeneExprpre)
+    gene_column = GeneExpr.columns[GeneExpr.columns.str.contains(gene)]
+    gene_column = gene_column.tolist()[0]
+    gene_num = GeneExpr.columns.get_loc(gene_column)
+    plt.figure(figsize=(10, 8))
+    shap.dependence_plot(gene_num, shap_values[1], GeneExprpre, interaction_index=None)
+    plt.xlabel(gene_column, fontsize=10)
+    plt.ylabel(f'SHAP value of {gene}', fontsize=10)
+    plt.savefig(f'Figure/{cancertype}SHAPlatedependenceplot{gene}.png', dpi=300, bbox_inches='tight')
+    plt.close()
+
+plot_dependence(gbm, 'KIRP', 'NEIL3', KIRP_GeneExpr, KIRP_GeneExprpre)
+plot_dependence(gbm, 'KIRP', 'FXR1', KIRP_GeneExpr, KIRP_GeneExprpre)
+plot_dependence(gbm, 'KIRP', 'C1orf112', KIRP_GeneExpr, KIRP_GeneExprpre)
 ```
 
 
@@ -593,6 +629,38 @@ plot_gene_expression_last('KIRP', 0.05)
 plot_gene_expression_last('KIRC', 0.01)
 ```
 
-## CHECK
+# [Scatterplot] Scatterplot for KIRC and KIRP SHAP value and gene expression difference
 ```python
-# Extract top 10 genes expression
+cancer_type = 'KIRC'
+ELgene = pd.read_csv(f'Data/{cancer_type}earlylatelabelCoxProggene005.csv', index_col=0)
+Eexpr = pd.read_csv(f'Data/{cancer_type}earlystageExprandClin.csv', index_col=0)
+Lexpr = pd.read_csv(f'Data/{cancer_type}latestageExprandClin.csv', index_col=0)
+Eexpr['E_L_Stage'] = 'early'
+Lexpr['E_L_Stage'] = 'late'
+Expr = pd.concat([Eexpr,Lexpr],axis=0)
+SHAPMeanValue = pd.read_csv(f'Output/{cancer_type}SHAPMeanValue.csv')
+# percentage = 0.05
+# SHAPMeanValue= SHAPMeanValue.head(int(len(SHAPMeanValue)*percentage))
+GeneExpr = Expr[SHAPMeanValue["Gene ensemble id"]]
+GeneExpr.columns = SHAPMeanValue["Gene symbol"]
+# Log2 transformation
+GeneExprpre = np.log2(GeneExpr+1)
+# z score
+GeneExprpre = GeneExprpre.apply(lambda x: (x-x.mean())/x.std(), axis = 1)
+# add stage label and cancer type label
+GeneExprpre['E_L_Stage'] = Expr['E_L_Stage']
+# Calculate the mean of early and late stage
+Genemean = GeneExprpre.groupby('E_L_Stage').median()
+# Transpose
+Genemean = Genemean.T
+Genemean['diff'] = Genemean['late'] - Genemean['early']
+# abs 
+Genemean['diff'] = Genemean['diff'].abs()
+# Combine SHAP value and gene expression difference
+com = pd.merge(SHAPMeanValue, Genemean, left_on='Gene symbol', right_on='Gene symbol')
+# Plotting the scatterplot
+plt.figure(figsize=(10, 8))
+sns.scatterplot(x='early', y='late', data=com)
+plt.savefig(f'Figure/{cancer_type}SHAPdiffScatterplot.png', dpi=300)
+```
+
