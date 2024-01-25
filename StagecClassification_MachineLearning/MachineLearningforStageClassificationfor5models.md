@@ -23,7 +23,9 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_score
 from imblearn.over_sampling import SMOTE
 import lightgbm as lgb
-import xgboost as xgb
+import xgboost as xg
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score
@@ -712,13 +714,14 @@ KIRC_GeneExpr = np.log2(KIRC_GeneExpr+1) # !!!!!
 scaler = StandardScaler() # !!!!!
 KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
 # Split data into training and testing sets
-y = KIRC_Target
-X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,KIRC_Target,test_size=0.3, stratify=y,random_state=44) # !!!!!
+le = LabelEncoder()
+y = le.fit_transform(KIRC_Target)
+X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,y,test_size=0.3, stratify=y,random_state=44) # !!!!!
 w = compute_sample_weight(class_weight='balanced', y=y_train) 
 # Best parameters
 params = {'subsample': 0.7000000000000001, 'num_leaves': 35, 'n_estimators': 500, 'max_depth': 1, 'learning_rate': 0.5} # !!!!!
 # Create a model with default parameters
-gbm = lgb.LGBMClassifier(**params,random_state=44) # !!!!!
+gbm = lgb.LGBMClassifier(**params,random_state=44,probability=True) # !!!!!
 # Create a StratifiedKFold object
 skf = StratifiedKFold(n_splits=5, random_state=37, shuffle=True)
 # Initialize the list to store the scores
@@ -749,7 +752,7 @@ plt.savefig('Figure/KIRC_GBM_confusion_matrix.png', dpi=300)
 plt.close()
 # Plotting the ROC curve
 y_pred_proba = gbm.predict_proba(X_test)[::, 1]
-fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label='late')
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label=1)
 auc = roc_auc_score(y_test, y_pred_proba)
 plt.figure(figsize=(5, 5))
 plt.plot(fpr, tpr, label="auc="+str(auc))
@@ -758,7 +761,7 @@ plt.legend(loc=4)
 plt.savefig('Figure/KIRC_GBM_ROC_curve.png', dpi=300)
 plt.close()
 # Plotting the precision-recall curve
-precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label='late')
+precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label=1)
 plt.figure(figsize=(5, 5))
 plt.plot(recall, precision, label="auc="+str(auc))
 plt.xlabel('Recall')
@@ -805,15 +808,16 @@ KIRP_GeneExpr = np.log2(KIRP_GeneExpr+1)  # !!!!!
 scaler = StandardScaler()  # !!!!!
 KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
 # Split data into training and testing sets
-y = KIRP_Target
-X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,KIRP_Target,test_size=0.3, stratify=y,random_state=44) # !!!!!
+le = LabelEncoder()
+y = le.fit_transform(KIRP_Target)
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,y,test_size=0.3, stratify=y,random_state=44) # !!!!!
 # SMOTE
 sm = SMOTE(random_state=44, sampling_strategy='minority',k_neighbors=40)  # !!!!!
 X_train, y_train = sm.fit_resample(X_train, y_train)
 # Best parameters
 params = {'subsample': 0.8, 'num_leaves': 55, 'n_estimators': 150, 'max_depth': 5, 'learning_rate': 1} # !!!!!
 # Create a model with default parameters
-gbm = lgb.LGBMClassifier(**params,boosting_type = 'gbdt',objective = 'binary',metric = 'binary_logloss',random_state=44) # !!!!!
+gbm = lgb.LGBMClassifier(**params,boosting_type = 'gbdt',objective = 'binary',metric = 'binary_logloss',random_state=44,probability=True) # !!!!!
 # Create a StratifiedKFold object
 skf = StratifiedKFold(n_splits=5, random_state=44, shuffle=True)  # !!!!!
 # Initialize the list to store the scores
@@ -846,7 +850,7 @@ plt.savefig('Figure/KIRP_GBM_confusion_matrix.png', dpi=300)
 plt.close()
 # Plotting the ROC curve
 y_pred_proba = gbm.predict_proba(X_test)[::, 1]
-fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label='late')
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label=1)
 auc = roc_auc_score(y_test, y_pred_proba)
 plt.figure(figsize=(5, 5))
 plt.plot(fpr, tpr, label="auc="+str(auc))
@@ -855,7 +859,7 @@ plt.legend(loc=4)
 plt.savefig('Figure/KIRP_GBM_ROC_curve.png', dpi=300)
 plt.close()
 # Plotting the precision-recall curve
-precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label='late')
+precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label=1)
 plt.figure(figsize=(5, 5))
 plt.plot(recall, precision, label="auc="+str(auc))
 plt.xlabel('Recall')
@@ -898,8 +902,9 @@ KIRC_GeneExpr = np.log2(KIRC_GeneExpr+1)
 scaler = StandardScaler()
 KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
 # Split data into training and testing sets
-y = KIRC_Target
-X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,KIRC_Target,test_size=0.3, stratify=y,random_state=444)
+le = LabelEncoder()
+y = le.fit_transform(KIRC_Target)
+X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,y,test_size=0.3, stratify=y,random_state=44)
 w = compute_sample_weight(class_weight='balanced', y=y_train)
 # Create a model with default parameters
 logreg = LogisticRegression(max_iter=600,penalty='l2',C=0.8,random_state=44)
@@ -936,7 +941,7 @@ plt.savefig('Figure/KIRC_LR_confusion_matrix.png', dpi=300)
 plt.close()
 # Plotting the ROC curve
 y_pred_proba = logreg.predict_proba(X_test)[::, 1]
-fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label='late')
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label=1)
 auc = roc_auc_score(y_test, y_pred_proba)
 plt.figure(figsize=(5, 5))
 plt.plot(fpr, tpr, label="auc="+str(auc))
@@ -945,7 +950,7 @@ plt.legend(loc=4)
 plt.savefig('Figure/KIRC_LR_ROC_curve.png', dpi=300)
 plt.close()
 # Plotting the precision-recall curve
-precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label='late')
+precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label=1)
 plt.figure(figsize=(5, 5))
 plt.plot(recall, precision, label="auc="+str(auc))
 plt.xlabel('Recall')
@@ -955,12 +960,12 @@ plt.savefig('Figure/KIRC_LR_precision_recall_curve.png', dpi=300)
 ```
 # Confusion matrix: 
 # [[92  5]
-# [ 1 61]]
-# Accuracy score:  0.9622641509433962
-# Recall score:  0.9661622879946791
-# Precision score:  0.9567448680351907
-# F1 score:  0.9607730263157894
-# Matthews correlation coefficient: 0.9228591067180563
+# [ 2 60]]
+# Accuracy score:  0.9559748427672956
+# Recall score:  0.9580977718656468
+# Precision score:  0.9509001636661212
+# F1 score:  0.9541163375520468
+# Matthews correlation coefficient: 0.9089694391107009
 ```
 
 ## [LogisticRegression-KIRP-Best-model] Best model for KIRP
@@ -988,15 +993,14 @@ KIRP_GeneExpr = np.log2(KIRP_GeneExpr+1)
 scaler = StandardScaler()
 KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
 # Split data into training and testing sets
-y = KIRP_Target
 le = LabelEncoder()
-y = le.fit_transform(y)
-X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,KIRP_Target,test_size=0.3, stratify=y,random_state=44)
+y = le.fit_transform(KIRP_Target)
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,y,test_size=0.3, stratify=y,random_state=44)
 # SMOTE
 sm = SMOTE(random_state=44, sampling_strategy='minority',k_neighbors=40)
 X_train, y_train = sm.fit_resample(X_train, y_train)
 # Create a model with default parameters
-lr = LogisticRegression(random_state=44, max_iter=1000,C = 0.8, penalty = 'l2')
+logreg = LogisticRegression(random_state=44, max_iter=1000,C = 0.8, penalty = 'l2')
 # Create a StratifiedKFold object
 skf = StratifiedKFold(n_splits=10, random_state=44, shuffle=True)
 # Initialize the list to store the scores
@@ -1029,7 +1033,7 @@ plt.savefig('Figure/KIRP_LR_confusion_matrix.png', dpi=300)
 plt.close()
 # Plotting the ROC curve
 y_pred_proba = lr.predict_proba(X_test)[::, 1]
-fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label='late')
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label=1)
 auc = roc_auc_score(y_test, y_pred_proba)
 plt.figure(figsize=(5, 5))
 plt.plot(fpr, tpr, label="auc="+str(auc))
@@ -1038,7 +1042,7 @@ plt.legend(loc=4)
 plt.savefig('Figure/KIRP_LR_ROC_curve.png', dpi=300)
 plt.close()
 # Plotting the precision-recall curve
-precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label='late')
+precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label=1)
 plt.figure(figsize=(5, 5))
 plt.plot(recall, precision, label="auc="+str(auc))
 plt.xlabel('Recall')
@@ -1078,10 +1082,9 @@ KIRC_GeneExpr = np.log2(KIRC_GeneExpr+1)
 scaler = StandardScaler()
 KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
 # Split data into training and testing sets
-y = KIRC_Target
 le = LabelEncoder()
-y = le.fit_transform(y)
-X_train, X_test, y_train, y_test  = train_test_split(KIRC_GeneExpr,KIRC_Target,test_size=0.3, stratify=y,random_state=44)
+y = le.fit_transform(KIRC_Target)
+X_train, X_test, y_train, y_test  = train_test_split(KIRC_GeneExpr,y,test_size=0.3, stratify=y,random_state=44)
 w = compute_sample_weight(class_weight='balanced', y=y_train)
 # Create a model with default parameters
 svc = SVC(kernel='linear', random_state=44,probability=True)
@@ -1119,7 +1122,7 @@ plt.close()
 
 # Plotting the ROC curve
 y_pred_proba = svc.decision_function(X_test)
-fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label='late')
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label=1)
 auc = roc_auc_score(y_test, y_pred_proba)
 plt.figure(figsize=(5, 5))
 plt.plot(fpr, tpr, label="auc="+str(auc))
@@ -1129,7 +1132,7 @@ plt.savefig('Figure/KIRC_SVC_ROC_curve.png', dpi=300)
 plt.close()
 # Plotting the precision-recall curve
 y_pred_proba = svc.decision_function(X_test)
-precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label='late')
+precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label=1)
 auc = roc_auc_score(y_test, y_pred_proba)
 plt.figure(figsize=(5, 5))
 plt.plot(recall, precision, label="auc="+str(auc), color='#3776ab')
@@ -1172,15 +1175,14 @@ KIRP_GeneExpr = np.log2(KIRP_GeneExpr+1)
 scaler = StandardScaler()
 KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
 # Split data into training and testing sets
-y = KIRP_Target
 le = LabelEncoder()
-y = le.fit_transform(y)
-X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,KIRP_Target,test_size=0.3, stratify=y,random_state=44)
+y = le.fit_transform(KIRP_Target)
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,y,test_size=0.3, stratify=y,random_state=44)
 # SMOTE
 sm = SMOTE(random_state=44, sampling_strategy='minority',k_neighbors=40)
 X_train, y_train = sm.fit_resample(X_train, y_train)
 # Create a model with default parameters
-svc = SVC(kernel='linear', random_state=44)
+svc = SVC(kernel='linear', random_state=44,probability=True)
 # Create a StratifiedKFold object
 skf = StratifiedKFold(n_splits=10, random_state=37, shuffle=True)
 # Initialize the list to store the scores
@@ -1217,7 +1219,7 @@ plt.close()
 
 # Plotting the ROC curve
 y_pred_proba = svc.decision_function(X_test)
-fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label='late')
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label=1)
 auc = roc_auc_score(y_test, y_pred_proba)
 plt.figure(figsize=(5, 5))
 plt.plot(fpr, tpr, label="auc="+str(auc))
@@ -1227,7 +1229,7 @@ plt.savefig('Figure/KIRP_SVC_ROC_curve.png', dpi=300)
 plt.close()
 # Plotting the precision-recall curve
 y_pred_proba = svc.decision_function(X_test)
-precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label='late')
+precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba, pos_label=1)
 plt.figure(figsize=(5, 5))
 plt.plot(recall, precision, label="auc="+str(auc), color='#3776ab')
 plt.xlabel('Recall')
@@ -1270,10 +1272,9 @@ KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
 # Create a label encoder
 le = LabelEncoder()
 # Label encoding for target variable
-KIRC_Target = le.fit_transform(KIRC_Target)
+y = le.fit_transform(KIRC_Target)
 # Split data into training and testing sets
-y = KIRC_Target
-X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,KIRC_Target,test_size=0.3, stratify=y,random_state=44)
+X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,y,test_size=0.3, stratify=y,random_state=44)
 # Create a model with best parameters
 params = {'subsample': 0.2, 'n_estimators': 850, 'max_depth': 9, 'learning_rate': 0.1, 'colsample_bytree': 0.7000000000000001}
 xgb = XGBClassifier(**params,use_label_encoder=True, eval_metric='logloss')
@@ -1333,16 +1334,15 @@ KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
 # Create a label encoder
 le = LabelEncoder()
 # Label encoding for target variable
-KIRP_Target = le.fit_transform(KIRP_Target)
+y = le.fit_transform(KIRP_Target)
 # Split data into training and testing sets
-y = KIRP_Target
-X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,KIRP_Target,test_size=0.3, stratify=y,random_state=44)
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,y,test_size=0.3, stratify=y,random_state=44)
 # SMOTE
 sm = SMOTE(random_state=44, sampling_strategy='minority',k_neighbors=40) # random_state=44 # k_neighbors=40
 X_train, y_train = sm.fit_resample(X_train, y_train)
 # Create a model with default parameters
 params = {'subsample': 0.7000000000000001, 'n_estimators': 500, 'min_child_weight': 1, 'max_depth': 2, 'learning_rate': 0.05, 'colsample_bytree': 0.6}
-xgb = XGBClassifier(**params,use_label_encoder=True, eval_metric='logloss')
+xgb = XGBClassifier(**params,use_label_encoder=True, eval_metric='logloss',probability=True)
 # Create a StratifiedKFold object
 skf = StratifiedKFold(n_splits=10, random_state=44, shuffle=True)
 # Initialize the list to store the scores
@@ -1397,10 +1397,9 @@ KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
 # Create a label encoder
 le = LabelEncoder()
 # Label encoding for target variable
-KIRC_Target = le.fit_transform(KIRC_Target)
+y = le.fit_transform(KIRC_Target)
 # Split data into training and testing sets
-y = KIRC_Target
-X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,KIRC_Target,test_size=0.3, stratify=y,random_state=44)
+X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,y,test_size=0.3, stratify=y,random_state=44)
 # Create a model with default parameters
 params = {'n_estimators': 710, 'min_samples_split': 9, 'min_samples_leaf': 3, 'max_samples': 0.9052631578947369, 'max_depth': 6} 
 rf = RandomForestClassifier(**params,random_state=44,class_weight='balanced')
@@ -1462,10 +1461,9 @@ KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
 # Create a label encoder
 le = LabelEncoder()
 # Label encoding for target variable
-KIRP_Target = le.fit_transform(KIRP_Target)
+y = le.fit_transform(KIRP_Target)
 # Split data into training and testing sets
-y = KIRP_Target
-X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,KIRP_Target,test_size=0.3, stratify=y,random_state=44) # KIRP_Target,test_size=0.3 # random_state=44
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,y,test_size=0.3, stratify=y,random_state=44) # KIRP_Target,test_size=0.3 # random_state=44
 # SMOTE
 sm = SMOTE(random_state=44, sampling_strategy='minority',k_neighbors=40) # random_state=44 # k_neighbors=40
 X_train, y_train = sm.fit_resample(X_train, y_train)
@@ -1540,30 +1538,58 @@ def plot_metrics(model, X_test, y_test, y_pred, cancer_type, model_name):
 ## `MultimodelROC` function : plot confusion matrix, ROC curve and precision-recall curve for non-linear models
 ```python
 classifiers = {
-    "SVC": svc,
     "Random Forest": rf,
     "XGBoost": xgb,
-    "Logistic Regression": lr,
-    "LightGBM": gbm
+    "LightGBM": gbm,
+    "SVC": svc,
+    "Logistic Regression":logreg
 }
 # Run classifiers
-fig, ax_roc = plt.subplots(figsize=(11, 5))
+fig, ax_roc = plt.subplots(figsize=(5, 5))
 for name, clf in classifiers.items():
       clf.fit(X_train, y_train)
       y_pred = clf.predict(X_test)
       y_pred_proba = clf.predict_proba(X_test)[::, 1]
       fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label=1)
       auc = roc_auc_score(y_test, y_pred_proba)
-      plt.plot(fpr, tpr, label=name+" auc="+str(auc))
-      plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='orange', label='Baseline')
+      plt.plot(fpr, tpr, label=name+" auc={:.2f}".format(auc))
       plt.legend(loc=4)
       plt.xlabel('False Positive Rate')
       plt.ylabel('True Positive Rate')
-      plt.title("Receiver Operating Characteristic (ROC) curves")
-      plt.grid(linestyle="--")
-plt.savefig('Figure/KIRC_Multimodel_ROC_curve.png', dpi=300)
+      plt.title("ROC curves of KIRC")
 
-    
+plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='orange', label='Baseline')      
+plt.savefig('Figure/KIRC_Multimodel_ROC_curve.png', dpi=300)
+plt.savefig('Figure/KIRC_Multimodel_ROC_curve.svg', dpi=300)
+plt.close()
+```
+```python
+classifiers = {
+    "Random Forest": rf,
+    "XGBoost": xgb,
+    "LightGBM": gbm,
+    "SVC": svc,
+    "Logistic Regression":logreg
+
+}
+# Run classifiers
+fig, ax_roc = plt.subplots(figsize=(5, 5))
+for name, clf in classifiers.items():
+      clf.fit(X_train, y_train)
+      y_pred = clf.predict(X_test)
+      y_pred_proba = clf.predict_proba(X_test)[::, 1]
+      fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba, pos_label=1)
+      auc = roc_auc_score(y_test, y_pred_proba)
+      plt.plot(fpr, tpr, label=name+" auc={:.2f}".format(auc))
+      plt.legend(loc=4)
+      plt.xlabel('False Positive Rate')
+      plt.ylabel('True Positive Rate')
+      plt.title("ROC curves of KIRP")
+
+plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='orange', label='Baseline')      
+plt.savefig('Figure/KIRP_Multimodel_ROC_curve.png', dpi=300)
+plt.savefig('Figure/KIRP_Multimodel_ROC_curve.svg', dpi=300)
+plt.close()
 ```
 
 # END

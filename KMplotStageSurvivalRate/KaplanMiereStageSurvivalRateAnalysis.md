@@ -13,7 +13,6 @@ import seaborn as sns
 from lifelines import KaplanMeierFitter
 from lifelines.statistics import logrank_test
 from matplotlib.lines import Line2D
-
 ```
 
 

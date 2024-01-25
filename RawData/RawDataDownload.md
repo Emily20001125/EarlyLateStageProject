@@ -7,11 +7,12 @@ Date : 2023/11/22
   - [1.2. Import package](#12-import-package)
   - [1.3. Download data - clinical data and expression data](#13-download-data---clinical-data-and-expression-data)
   - [1.3. Download data - Mutation data](#13-download-data---mutation-data)
+  - [Download Mutation data - TCGAbiolinks](#download-mutation-data---tcgabiolinks)
 
 ## 1.1. Environment 
 ```shell
 conda activate basic_work
-cd stage_project_git/Raw_data
+cd EarlyLateStageProject/RawData
 ```
 
 ## 1.2. Import package 
@@ -85,4 +86,54 @@ head(Mut_data)
 
 # save Mutation file as rds file
 write.csv(Mut_data,file="TCGAPanCancermc3SilentGeneMut.csv")
+```
+
+## Download Mutation data - TCGAbiolinks
+Environmect
+```r
+conda activate TCGAbiolinks
+cd /home/emily2835/EarlyLateStageProject/RawData
+```
+Import package
+```r
+library(TCGAbiolinks)
+```
+Import data
+```r
+KIRPLate <- read.csv("KIRPlatestageExprandClin.csv")
+KIRPEarly <- read.csv("KIRPearlystageExprandClin.csv")
+KIRCLate <- read.csv("KIRClatestageExprandClin.csv")
+KIRCEarly <- read.csv("KIRCearlystageExprandClin.csv")
+```
+KIRP Download data
+```r
+KIRPLate$sample
+KIRPEarly$sample
+barcodeslist <- c(KIRPLate$sample,KIRPEarly$sample)
+
+query <- GDCquery(
+    project = "TCGA-KIRP", 
+    data.category = "Copy Number Variation",
+    data.type = "Copy Number Segment",
+    barcode = barcodeslist
+)
+GDCdownload(query)
+data <- GDCprepare(query)
+write.csv(data,file="KIRPCNVFromTCGAbiolinks.csv")
+```
+KIRC Download data
+```r
+KIRCLate$sample
+KIRCEarly$sample
+barcodeslist <- c(KIRCLate$sample,KIRCEarly$sample)
+
+query <- GDCquery(
+    project = "TCGA-KIRC", 
+    data.category = "Copy Number Variation",
+    data.type = "Copy Number Segment",
+    barcode = barcodeslist
+)
+GDCdownload(query)
+data <- GDCprepare(query)
+write.csv(data,file="KIRCCNVFromTCGAbiolinks.csv")
 ```

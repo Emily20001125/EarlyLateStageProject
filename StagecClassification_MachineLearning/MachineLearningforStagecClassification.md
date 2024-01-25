@@ -143,7 +143,6 @@ scores = cross_val_score(gbm, X_train, y_train, cv=skf, scoring='accuracy')
 print('Cross-validation scores:{}'.format(scores))
 # Cross-validation scores:[0.79245283 0.88679245 0.81132075 0.81132075 0.84615385]
 
-
 # Train and Test the model
 start = time.time()
 gbm.fit(X_train, y_train)
@@ -224,6 +223,7 @@ print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
 end = time.time()
 ```
 
+
 ## [XGBoost-KIRP] Using earlylate prog gene to classify early and late stage for Kidney cancer
 ```python
 # Read data
@@ -279,6 +279,25 @@ print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
       'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
       'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
 end = time.time()
+```
+
+
+
+
+## [SVM-KIRC] Using earlylate prog gene to classify early and late stage for Kidney cancer
+```python
+```
+
+## [SVM-KIRP] Using earlylate prog gene to classify early and late stage for Kidney cancer
+```python
+```
+
+## [RandomForest-KIRC] Using earlylate prog gene to classify early and late stage for Kidney cancer
+```python
+```
+
+## [RandomForest-KIRP] Using earlylate prog gene to classify early and late stage for Kidney cancer
+```python
 ```
 
 ## [Ligthgbm-KIRC] Parameter tuning for KIRC
@@ -404,8 +423,334 @@ end = time.time()
 print("Time taken to run:", end - start) 
 ```
 
+## [XGBoost-KIRC] Parameter tuning for KIRC
+```python
+# Read data
+KIRC_ELgene = pd.read_csv('Data/KIRCearlylatelabelCoxProggene005.csv', index_col=0)
+KIRC_Eexpr = pd.read_csv('Data/KIRCearlystageExprandClin.csv', index_col=0)
+KIRC_Lexpr = pd.read_csv('Data/KIRClatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRC_Eexpr['E_L_Stage'] = 'early'
+KIRC_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRC_Expr = pd.concat([KIRC_Eexpr,KIRC_Lexpr],axis=0)
+# check the number of early and late stage
+KIRC_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRC_GeneExpr = KIRC_Expr[KIRC_ELgene[KIRC_ELgene['ProgStage']=='earlylate']['gene']]
+KIRC_Target = KIRC_Expr['E_L_Stage']
+# Log2 transformation
+KIRC_GeneExpr = np.log2(KIRC_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
+# Create a label encoder
+le = LabelEncoder()
+# Label encoding for target variable
+KIRC_Target = le.fit_transform(KIRC_Target)
+# Split data into training and testing sets
+y = KIRC_Target
+X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,KIRC_Target,test_size=0.3, stratify=y,random_state=44)
+w = compute_sample_weight(class_weight='balanced', y=y_train)
+# Create a model with default parameters
+xgb = XGBClassifier(use_label_encoder=True, eval_metric='logloss')
+# Tuning parameters use RandomizedSearchCV
+# Create the grid
+grid = {
+    'n_estimators': list(range(100, 1000,50)),
+    'learning_rate': [0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1],
+    'colsample_bytree': np.linspace(0.1, 1, 10),
+    'max_depth': list(range(1, 10,2)),
+    'subsample': np.linspace(0.1, 1, 10)
+}
+# Create the random search
+random_search = RandomizedSearchCV(
+    estimator=xgb, 
+    param_distributions=grid, 
+    n_iter=100,
+    scoring='accuracy',
+    cv=3, 
+    verbose=1
+)
+random_search.fit(X_train, y_train)
+print('Best parameters found: ', random_search.best_params_, '\n',
+      'Accuracy score: ', random_search.best_score_)
+# Best parameters found:  {'subsample': 0.2, 'n_estimators': 850, 'max_depth': 9, 'learning_rate': 0.1, 'colsample_bytree': 0.7000000000000001}
+# Accuracy score:  0.8590785907859079
+y_pred = random_search.best_estimator_.predict(X_test)
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+# Confusion matrix:  
+# [[89  8]
+# [ 7 55]]
+# Accuracy score:  0.9056603773584906
+# Recall score:  0.9023112736947123
+# Precision score:  0.9000496031746033
+# F1 score:  0.901139896373057
+# Matthews correlation coefficient: 0.8023576892988286
+```
 
-## [Ligthgbm-KIRC-Best-model] Parameter tuning for KIRC
+## [XGBoost-KIRP] Parameter tuning for KIRP
+```python
+# Read data
+KIRP_ELgene = pd.read_csv('Data/KIRPearlylatelabelCoxProggene005.csv', index_col=0)
+KIRP_Eexpr = pd.read_csv('Data/KIRPearlystageExprandClin.csv', index_col=0)
+KIRP_Lexpr = pd.read_csv('Data/KIRPlatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRP_Eexpr['E_L_Stage'] = 'early'
+KIRP_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRP_Expr = pd.concat([KIRP_Eexpr,KIRP_Lexpr],axis=0)
+# E_L_Stage
+# early    189
+# late      96
+# check the number of early and late stage
+KIRP_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRP_GeneExpr = KIRP_Expr[KIRP_ELgene[KIRP_ELgene['ProgStage']=='earlylate']['gene']]
+KIRP_Target = KIRP_Expr['E_L_Stage']
+# Log2 transformation
+KIRP_GeneExpr = np.log2(KIRP_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
+# Create a label encoder
+le = LabelEncoder()
+# Label encoding for target variable
+KIRP_Target = le.fit_transform(KIRP_Target)
+# Split data into training and testing sets
+y = KIRP_Target
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,KIRP_Target,test_size=0.3, stratify=y,random_state=44) # KIRP_Target,test_size=0.3 # random_state=44
+# SMOTE
+sm = SMOTE(random_state=37, sampling_strategy='minority',k_neighbors=40) # random_state=44 # k_neighbors=40
+X_train, y_train = sm.fit_resample(X_train, y_train)
+# Create a model with default parameters
+xgb = XGBClassifier(use_label_encoder=True, eval_metric='logloss',objective='binary:logistic')
+# Tuning parameters use RandomizedSearchCV
+# Create the grid
+grid = {
+    'n_estimators': list(range(100, 1000,10)),
+    'learning_rate': [0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1],
+    'colsample_bytree': np.linspace(0.1, 1, 20),
+    'max_depth': list(range(1, 10,1)),
+    'subsample': np.linspace(0.1, 1, 20),
+    'min_child_weight':list(range(1, 20, 1))
+}
+# Create the random search
+random_search = RandomizedSearchCV(
+    estimator=xgb, 
+    param_distributions=grid, 
+    n_iter=100, 
+    scoring='accuracy',
+    cv=3, 
+    verbose=1
+)
+start = time.time()
+random_search.fit(X_train, y_train)
+print('Best parameters found: ', random_search.best_params_, '\n',
+      'Accuracy score: ', random_search.best_score_)
+end = time.time()
+print("Time taken to run:", end - start) 
+#Time taken to run: 303.0863857269287 300 times
+y_pred = random_search.best_estimator_.predict(X_test)
+
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+```
+
+```
+>>> print('Best parameters found: ', random_search.best_params_, '\n',
+...       'Accuracy score: ', random_search.best_score_)
+Best parameters found:  {'subsample': 0.7000000000000001, 'n_estimators': 300, 'min_child_weight': 1, 'max_depth': 2, 'learning_rate': 0.05, 'colsample_bytree': 0.6}
+ Accuracy score:  0.837121212121212
+>>> end = time.time()
+>>> print("Time taken to run:", end - start)
+Time taken to run: 50.55003309249878
+>>> #Time taken to run: 303.0863857269287 300 times
+>>> y_pred = random_search.best_estimator_.predict(X_test)
+>>>
+>>> print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+Confusion matrix:  [[51  6]
+ [ 9 20]]
+>>> print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+...       'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+...       'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+...       'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+...       'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+Accuracy score:  0.8255813953488372
+ Recall score:  0.7921960072595282
+ Precision score:  0.8096153846153846
+ F1 score:  0.7995337995337997
+ Matthews correlation coefficient: 0.6015592378834806
+```
+
+
+## [RandomForest-KIRC] Parameter tuning for KIRC
+```python
+# Read data
+KIRC_ELgene = pd.read_csv('Data/KIRCearlylatelabelCoxProggene005.csv', index_col=0)
+KIRC_Eexpr = pd.read_csv('Data/KIRCearlystageExprandClin.csv', index_col=0)
+KIRC_Lexpr = pd.read_csv('Data/KIRClatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRC_Eexpr['E_L_Stage'] = 'early'
+KIRC_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRC_Expr = pd.concat([KIRC_Eexpr,KIRC_Lexpr],axis=0)
+# check the number of early and late stage
+KIRC_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRC_GeneExpr = KIRC_Expr[KIRC_ELgene[KIRC_ELgene['ProgStage']=='earlylate']['gene']]
+KIRC_Target = KIRC_Expr['E_L_Stage']
+# Log2 transformation
+KIRC_GeneExpr = np.log2(KIRC_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
+# Create a label encoder
+le = LabelEncoder()
+# Label encoding for target variable
+KIRC_Target = le.fit_transform(KIRC_Target)
+# Split data into training and testing sets
+y = KIRC_Target
+X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,KIRC_Target,test_size=0.3, stratify=y,random_state=44)
+w = compute_sample_weight(class_weight='balanced', y=y_train)
+# Create a model with default parameters
+rf = RandomForestClassifier(random_state=44,class_weight='balanced')
+# Tuning parameters use RandomizedSearchCV
+# Create the grid
+grid = {
+    'n_estimators': list(range(100, 1000,10)),
+    'max_depth': list(range(1, 20,1)),
+    'min_samples_split':list(range(2, 20, 1)),
+    'min_samples_leaf': list(range(1, 20, 1)),
+    'max_samples': np.linspace(0.1, 1, 20),
+    'max_features': np.linspace(0.1, 1, 20)
+}
+# Create the random search
+random_search = RandomizedSearchCV(
+    estimator=rf, 
+    param_distributions=grid, 
+    n_iter=100,
+    scoring='accuracy',
+    cv=3, 
+    verbose=1,
+    n_jobs=50
+)
+random_search.fit(X_train, y_train)
+print('Best parameters found: ', random_search.best_params_, '\n',
+      'Accuracy score: ', random_search.best_score_)
+y_pred = random_search.best_estimator_.predict(X_test)
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+```
+
+```
+>>> print('Best parameters found: ', random_search.best_params_, '\n',
+...       'Accuracy score: ', random_search.best_score_)
+Best parameters found:  {'n_estimators': 710, 'min_samples_split': 9, 'min_samples_leaf': 3, 'max_samples': 0.9052631578947369, 'max_depth': 6}   
+ Accuracy score:  0.7723577235772359
+>>> y_pred = random_search.best_estimator_.predict(X_test)
+>>> print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+Confusion matrix:  [[88  9]
+ [10 52]]
+>>> print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+...       'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+...       'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+...       'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+...       'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+Accuracy score:  0.8805031446540881
+ Recall score:  0.8729630861323578
+ Precision score:  0.875209100033456 
+ F1 score:  0.8740462789243277
+ Matthews correlation coefficient: 0.7481688148898544
+```
+
+
+## [RandomForest-KIRP] Parameter tuning for KIRP
+```python
+# Read data
+KIRP_ELgene = pd.read_csv('Data/KIRPearlylatelabelCoxProggene005.csv', index_col=0)
+KIRP_Eexpr = pd.read_csv('Data/KIRPearlystageExprandClin.csv', index_col=0)
+KIRP_Lexpr = pd.read_csv('Data/KIRPlatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRP_Eexpr['E_L_Stage'] = 'early'
+KIRP_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRP_Expr = pd.concat([KIRP_Eexpr,KIRP_Lexpr],axis=0)
+# E_L_Stage
+# early    189
+# late      96
+# check the number of early and late stage
+KIRP_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRP_GeneExpr = KIRP_Expr[KIRP_ELgene[KIRP_ELgene['ProgStage']=='earlylate']['gene']]
+KIRP_Target = KIRP_Expr['E_L_Stage']
+# Log2 transformation
+KIRP_GeneExpr = np.log2(KIRP_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
+# Create a label encoder
+le = LabelEncoder()
+# Label encoding for target variable
+KIRP_Target = le.fit_transform(KIRP_Target)
+# Split data into training and testing sets
+y = KIRP_Target
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,KIRP_Target,test_size=0.3, stratify=y,random_state=44) # KIRP_Target,test_size=0.3 # random_state=44
+# SMOTE
+sm = SMOTE(random_state=44, sampling_strategy='minority',k_neighbors=40) # random_state=44 # k_neighbors=40
+X_train, y_train = sm.fit_resample(X_train, y_train)
+# Create a model with default parameters
+rf = RandomForestClassifier(random_state=44)
+# Tuning parameters use RandomizedSearchCV
+# Create the grid
+grid = {
+    'n_estimators': list(range(100, 1000,10)),
+    'max_depth': list(range(1, 100,1)),
+    'min_samples_split':list(range(2, 20, 1)),
+    'min_samples_leaf': list(range(1, 20, 1)),
+    'max_samples': np.linspace(0.1, 1, 20),
+    'max_features': np.linspace(0.1, 1, 20)
+}
+# Create the random search
+random_search = RandomizedSearchCV(
+    estimator=rf, 
+    param_distributions=grid, 
+    n_iter=500,
+    scoring='accuracy',
+    cv=3, 
+    verbose=1,
+    n_jobs=50
+)
+start = time.time()
+random_search.fit(X_train, y_train)
+print('Best parameters found: ', random_search.best_params_, '\n',
+      'Accuracy score: ', random_search.best_score_)
+end = time.time()
+# Time taken to run: 269.9670960903168 1500times
+print("Time taken to run:", end - start) #Time taken to run: 303.0863857269287 300 times
+y_pred = random_search.best_estimator_.predict(X_test)
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+```
+
+## [Ligthgbm-KIRC-Best-model] Best model for KIRC
 ```python
 # Read data
 KIRC_ELgene = pd.read_csv('Data/KIRCearlylatelabelCoxProggene005.csv', index_col=0)
@@ -500,7 +845,7 @@ Matthews correlation coefficient: 0.8425791086995256
 ```
 
 
-## [Ligthgbm-KIRP-Best-model] Parameter tuning for KIRP
+## [Ligthgbm-KIRP-Best-model] Best model for KIRP
 ```python
 # Read data
 KIRP_ELgene = pd.read_csv('Data/KIRPearlylatelabelCoxProggene005.csv', index_col=0)
@@ -594,18 +939,503 @@ F1 score:  0.8380414312617701
 Matthews correlation coefficient: 0.6808545519192479
 Time taken to run: 0.008035659790039062
 ```
-## Plotting the boxplot for 5-fold cross-validation scores
+
+
+## [LogisticRegression-KIRC-Best-model] Best model for KIRC
 ```python
-df1 = pd.DataFrame({'Model': ['KIRC']*len(scoresKIRC), 'Accuracy': scoresKIRC})
-df2 = pd.DataFrame({'Model': ['KIRP']*len(scoresKIRP), 'Accuracy': scoresKIRP})
-data = pd.concat([df1, df2])
-plt.figure(figsize=(6, 5))
-plt.title("The 5 fold cross-validation accuracy score of KIRC and KIRP")
-sns.boxplot(x='Model', y='Accuracy', data=data,hue='Model',width=0.4)
-plt.savefig('Figure/KIRC_KIRP_DifferentModelboxplot.png', dpi=300)
+# Read data
+KIRC_ELgene = pd.read_csv('Data/KIRCearlylatelabelCoxProggene005.csv', index_col=0)
+KIRC_Eexpr = pd.read_csv('Data/KIRCearlystageExprandClin.csv', index_col=0)
+KIRC_Lexpr = pd.read_csv('Data/KIRClatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRC_Eexpr['E_L_Stage'] = 'early'
+KIRC_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRC_Expr = pd.concat([KIRC_Eexpr,KIRC_Lexpr],axis=0)
+# check the number of early and late stage
+KIRC_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRC_GeneExpr = KIRC_Expr[KIRC_ELgene[KIRC_ELgene['ProgStage']=='earlylate']['gene']]
+KIRC_Target = KIRC_Expr['E_L_Stage']
+# Log2 transformation
+KIRC_GeneExpr = np.log2(KIRC_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
+# Split data into training and testing sets
+y = KIRC_Target
+X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,KIRC_Target,test_size=0.3, stratify=y,random_state=444)
+w = compute_sample_weight(class_weight='balanced', y=y_train)
+# Create a model with default parameters
+logreg = LogisticRegression(max_iter=600,penalty='l2',C=0.8,random_state=44)
+# Create a StratifiedKFold object
+skf = StratifiedKFold(n_splits=5, random_state=37, shuffle=True)
+# Initialize the list to store the scores
+scores = cross_val_score(logreg, X_train, y_train, cv=skf, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scores))
+# Cross-validation scores:[0.89189189 0.93243243 0.94594595 0.95945946 0.95890411]
+
+# Train and Test the model
+start = time.time()
+logreg.fit(X_train, y_train, sample_weight=w)
+# Predict on test set
+y_pred = logreg.predict(X_test)
+# Model evaluation
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+end = time.time()
+
+# Confusion matrix: 
+# [[92  5]
+# [ 1 61]]
+# Accuracy score:  0.9622641509433962
+# Recall score:  0.9661622879946791
+# Precision score:  0.9567448680351907
+# F1 score:  0.9607730263157894
+# Matthews correlation coefficient: 0.9228591067180563
 ```
 
-## [Ligthgbm/XGBoost/RandomForest] Using earlylate prog gene to classify early and late stage for Kidney cancer
+## [LogisticRegression-KIRP-Best-model] Best model for KIRP
+```python
+# Read data
+KIRP_ELgene = pd.read_csv('Data/KIRPearlylatelabelCoxProggene005.csv', index_col=0)
+KIRP_Eexpr = pd.read_csv('Data/KIRPearlystageExprandClin.csv', index_col=0)
+KIRP_Lexpr = pd.read_csv('Data/KIRPlatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRP_Eexpr['E_L_Stage'] = 'early'
+KIRP_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRP_Expr = pd.concat([KIRP_Eexpr,KIRP_Lexpr],axis=0)
+# E_L_Stage
+# early    189
+# late      96
+# check the number of early and late stage
+KIRP_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRP_GeneExpr = KIRP_Expr[KIRP_ELgene[KIRP_ELgene['ProgStage']=='earlylate']['gene']]
+KIRP_Target = KIRP_Expr['E_L_Stage']
+# Log2 transformation
+KIRP_GeneExpr = np.log2(KIRP_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
+# Split data into training and testing sets
+y = KIRP_Target
+le = LabelEncoder()
+y = le.fit_transform(y)
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,KIRP_Target,test_size=0.3, stratify=y,random_state=44)
+# SMOTE
+sm = SMOTE(random_state=44, sampling_strategy='minority',k_neighbors=40)
+X_train, y_train = sm.fit_resample(X_train, y_train)
+# Create a model with default parameters
+lr = LogisticRegression(random_state=44, max_iter=1000,C = 0.8, penalty = 'l2')
+# Create a StratifiedKFold object
+skf = StratifiedKFold(n_splits=10, random_state=44, shuffle=True)
+# Initialize the list to store the scores
+scores = cross_val_score(lr, X_train, y_train, cv=skf, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scores))
+# Cross-validation scores:[0.88888889 0.96296296 0.92592593 0.85185185 0.80769231 1. 0.92307692 0.88461538 0.92307692 0.96153846]
+# Train and Test the model
+start = time.time()
+lr.fit(X_train, y_train)
+# Predict on test set
+y_pred = lr.predict(X_test)
+# Model evaluation
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+end = time.time()
+
+
+# Confusion matrix:  [[52  5]
+# [ 7 22]]
+# Accuracy score:  0.8604651162790697
+# Recall score:  0.8354506957047791
+# Precision score:  0.8480853735091023
+# F1 score:  0.8411330049261083
+# Matthews correlation coefficient: 0.6834192877239749
+```
+
+## [SVC-KIRC-Best-model] Best model for KIRC
+```python
+# Read data
+KIRC_ELgene = pd.read_csv('Data/KIRCearlylatelabelCoxProggene005.csv', index_col=0)
+KIRC_Eexpr = pd.read_csv('Data/KIRCearlystageExprandClin.csv', index_col=0)
+KIRC_Lexpr = pd.read_csv('Data/KIRClatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRC_Eexpr['E_L_Stage'] = 'early'
+KIRC_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRC_Expr = pd.concat([KIRC_Eexpr,KIRC_Lexpr],axis=0)
+# check the number of early and late stage
+KIRC_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRC_GeneExpr = KIRC_Expr[KIRC_ELgene[KIRC_ELgene['ProgStage']=='earlylate']['gene']]
+KIRC_Target = KIRC_Expr['E_L_Stage']
+# Log2 transformation
+KIRC_GeneExpr = np.log2(KIRC_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
+# Split data into training and testing sets
+y = KIRC_Target
+X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,KIRC_Target,test_size=0.3, stratify=y,random_state=44)
+w = compute_sample_weight(class_weight='balanced', y=y_train)
+# Create a model with default parameters
+svc = SVC(kernel='linear', random_state=44)
+# Create a StratifiedKFold object
+skf = StratifiedKFold(n_splits=10, random_state=37, shuffle=True)
+# Initialize the list to store the scores
+scores = cross_val_score(svc, X_train, y_train, cv=skf, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scores))
+# Cross-validation scores:[0.98648649 0.97297297 0.94594595 0.98648649 0.94520548]
+
+# Train and Test the model
+start = time.time()
+svc.fit(X_train, y_train, sample_weight=w)
+# Predict on test set
+y_pred = svc.predict(X_test)
+# Model evaluation
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+end = time.time()
+
+# Confusion matrix:  
+# [[92  5]
+# [ 4 58]]
+# Accuracy score:  0.9433962264150944
+# Recall score:  0.9419687396075822
+# Precision score:  0.939484126984127
+# F1 score:  0.9406839378238342
+# Matthews correlation coefficient: 0.8814493648093764
+```
+
+## [SVC-KIRP-Best-model] Best model for KIRP
+```python
+# Read data
+KIRP_ELgene = pd.read_csv('Data/KIRPearlylatelabelCoxProggene005.csv', index_col=0)
+KIRP_Eexpr = pd.read_csv('Data/KIRPearlystageExprandClin.csv', index_col=0)
+KIRP_Lexpr = pd.read_csv('Data/KIRPlatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRP_Eexpr['E_L_Stage'] = 'early'
+KIRP_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRP_Expr = pd.concat([KIRP_Eexpr,KIRP_Lexpr],axis=0)
+# E_L_Stage
+# early    189
+# late      96
+# check the number of early and late stage
+KIRP_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRP_GeneExpr = KIRP_Expr[KIRP_ELgene[KIRP_ELgene['ProgStage']=='earlylate']['gene']]
+KIRP_Target = KIRP_Expr['E_L_Stage']
+# Log2 transformation
+KIRP_GeneExpr = np.log2(KIRP_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
+# Split data into training and testing sets
+y = KIRP_Target
+le = LabelEncoder()
+y = le.fit_transform(y)
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,KIRP_Target,test_size=0.3, stratify=y,random_state=44)
+# SMOTE
+sm = SMOTE(random_state=44, sampling_strategy='minority',k_neighbors=40)
+X_train, y_train = sm.fit_resample(X_train, y_train)
+# Create a model with default parameters
+svc = SVC(kernel='linear', random_state=44)
+# Create a StratifiedKFold object
+skf = StratifiedKFold(n_splits=10, random_state=37, shuffle=True)
+# Initialize the list to store the scores
+scores = cross_val_score(svc, X_train, y_train, cv=skf, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scores))
+# Cross-validation scores:[0.88888889 0.81481481 0.92592593 1.0.96153846 0.92307692 0.96153846 0.84615385 0.96153846 0.92307692]
+
+# Train and Test the model
+start = time.time()
+svc.fit(X_train, y_train)
+# Predict on test set
+y_pred = svc.predict(X_test)
+# Model evaluation
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+end = time.time()
+
+# Confusion matrix:  
+# [[49  8]
+# [ 8 21]]
+# Accuracy score:  0.813953488372093
+# Recall score:  0.7918935269207501
+# Precision score:  0.7918935269207501
+# F1 score:  0.7918935269207502
+# Matthews correlation coefficient: 0.5837870538415003
+```
+
+## [XGBoost-KIRC-Best-model] Best model for KIRC
+```python
+# Read data
+KIRC_ELgene = pd.read_csv('Data/KIRCearlylatelabelCoxProggene005.csv', index_col=0)
+KIRC_Eexpr = pd.read_csv('Data/KIRCearlystageExprandClin.csv', index_col=0)
+KIRC_Lexpr = pd.read_csv('Data/KIRClatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRC_Eexpr['E_L_Stage'] = 'early'
+KIRC_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRC_Expr = pd.concat([KIRC_Eexpr,KIRC_Lexpr],axis=0)
+# check the number of early and late stage
+KIRC_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRC_GeneExpr = KIRC_Expr[KIRC_ELgene[KIRC_ELgene['ProgStage']=='earlylate']['gene']]
+KIRC_Target = KIRC_Expr['E_L_Stage']
+# Log2 transformation
+KIRC_GeneExpr = np.log2(KIRC_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
+# Create a label encoder
+le = LabelEncoder()
+# Label encoding for target variable
+KIRC_Target = le.fit_transform(KIRC_Target)
+# Split data into training and testing sets
+y = KIRC_Target
+X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,KIRC_Target,test_size=0.3, stratify=y,random_state=44)
+# Create a model with best parameters
+params = {'subsample': 0.2, 'n_estimators': 850, 'max_depth': 9, 'learning_rate': 0.1, 'colsample_bytree': 0.7000000000000001}
+xgb = XGBClassifier(**params,use_label_encoder=True, eval_metric='logloss')
+# Create a StratifiedKFold object
+skf = StratifiedKFold(n_splits=10, random_state=44, shuffle=True)
+# Initialize the list to store the scores
+scores = cross_val_score(xgb, X_train, y_train, cv=skf, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scores))
+# Cross-validation scores:[0.86486486 0.86486486 0.81081081 0.83783784 0.83783784 0.86486486 0.91891892 0.83783784 0.83783784 0.91666667]
+xgb.fit(X_train, y_train)
+# Predict on test set
+y_pred = xgb.predict(X_test)
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+```
+```
+Best parameters found:  {'subsample': 0.2, 'n_estimators': 850, 'max_depth': 9, 'learning_rate': 0.1, 'colsample_bytree': 0.7000000000000001}
+# Confusion matrix:  
+# [[89  8]
+# [ 7 55]]
+# Accuracy score:  0.9056603773584906
+# Recall score:  0.9023112736947123
+# Precision score:  0.9000496031746033
+# F1 score:  0.901139896373057
+# Matthews correlation coefficient: 0.8023576892988286
+```
+
+
+## [XGBoost-KIRP-Best-model] Best model for KIRP
+```python
+# Read data
+KIRP_ELgene = pd.read_csv('Data/KIRPearlylatelabelCoxProggene005.csv', index_col=0)
+KIRP_Eexpr = pd.read_csv('Data/KIRPearlystageExprandClin.csv', index_col=0)
+KIRP_Lexpr = pd.read_csv('Data/KIRPlatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRP_Eexpr['E_L_Stage'] = 'early'
+KIRP_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRP_Expr = pd.concat([KIRP_Eexpr,KIRP_Lexpr],axis=0)
+# check the number of early and late stage
+KIRP_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRP_GeneExpr = KIRP_Expr[KIRP_ELgene[KIRP_ELgene['ProgStage']=='earlylate']['gene']]
+KIRP_Target = KIRP_Expr['E_L_Stage']
+# Log2 transformation
+KIRP_GeneExpr = np.log2(KIRP_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
+# Create a label encoder
+le = LabelEncoder()
+# Label encoding for target variable
+KIRP_Target = le.fit_transform(KIRP_Target)
+# Split data into training and testing sets
+y = KIRP_Target
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,KIRP_Target,test_size=0.3, stratify=y,random_state=44)
+# SMOTE
+sm = SMOTE(random_state=44, sampling_strategy='minority',k_neighbors=40) # random_state=44 # k_neighbors=40
+X_train, y_train = sm.fit_resample(X_train, y_train)
+# Create a model with default parameters
+params = {'subsample': 0.7000000000000001, 'n_estimators': 500, 'min_child_weight': 1, 'max_depth': 2, 'learning_rate': 0.05, 'colsample_bytree': 0.6}
+xgb = XGBClassifier(**params,use_label_encoder=True, eval_metric='logloss')
+# Create a StratifiedKFold object
+skf = StratifiedKFold(n_splits=10, random_state=44, shuffle=True)
+# Initialize the list to store the scores
+scores = cross_val_score(xgb, X_train, y_train, cv=skf, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scores))
+# Cross-validation scores:[0.85185185 0.88888889 0.88888889 0.85185185 0.80769231 0.96153846 0.96153846 0.88461538 0.84615385 0.80769231]
+xgb.fit(X_train, y_train)
+# Predict on test set
+y_pred = xgb.predict(X_test)
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+
+```
+```
+# Best parameters found:  {'subsample': 0.7000000000000001, 'n_estimators': 500, 'min_child_weight': 1, 'max_depth': 2, 'learning_rate': 0.05, 'colsample_bytree': 0.6} 
+# Confusion matrix: 
+# [[52  5]
+# [ 8 21]]
+# Accuracy score:  0.8488372093023255
+# Recall score:  0.8182093163944344
+# Precision score:  0.8371794871794872
+# F1 score:  0.8262626262626263
+# Matthews correlation coefficient: 0.6551142010904986
+```
+
+## [RandomForest-KIRC-Best-model] Best model for KIRC
+```python
+# Read data
+KIRC_ELgene = pd.read_csv('Data/KIRCearlylatelabelCoxProggene005.csv', index_col=0)
+KIRC_Eexpr = pd.read_csv('Data/KIRCearlystageExprandClin.csv', index_col=0)
+KIRC_Lexpr = pd.read_csv('Data/KIRClatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRC_Eexpr['E_L_Stage'] = 'early'
+KIRC_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRC_Expr = pd.concat([KIRC_Eexpr,KIRC_Lexpr],axis=0)
+# check the number of early and late stage
+KIRC_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRC_GeneExpr = KIRC_Expr[KIRC_ELgene[KIRC_ELgene['ProgStage']=='earlylate']['gene']]
+KIRC_Target = KIRC_Expr['E_L_Stage']
+# Log2 transformation
+KIRC_GeneExpr = np.log2(KIRC_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
+# Create a label encoder
+le = LabelEncoder()
+# Label encoding for target variable
+KIRC_Target = le.fit_transform(KIRC_Target)
+# Split data into training and testing sets
+y = KIRC_Target
+X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,KIRC_Target,test_size=0.3, stratify=y,random_state=44)
+# Create a model with default parameters
+params = {'n_estimators': 710, 'min_samples_split': 9, 'min_samples_leaf': 3, 'max_samples': 0.9052631578947369, 'max_depth': 6} 
+rf = RandomForestClassifier(**params,random_state=44,class_weight='balanced')
+# Create a StratifiedKFold object
+skf = StratifiedKFold(n_splits=10, random_state=44, shuffle=True)
+# Initialize the list to store the scores
+scores = cross_val_score(rf, X_train, y_train, cv=skf, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scores))
+# Cross-validation scores:[0.72972973 0.72972973 0.83783784 0.83783784 0.75675676 0.7027027 0.72972973 0.72972973 0.81081081 0.86111111]
+# fit model
+rf.fit(X_train, y_train)
+# Predict on test set
+y_pred = rf.predict(X_test)
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+```
+```
+Best parameters found:  {'n_estimators': 710, 'min_samples_split': 9, 'min_samples_leaf': 3, 'max_samples': 0.9052631578947369, 'max_depth': 6} 
+# Confusion matrix: 
+# [[88  9]
+# [10 52]]
+# Accuracy score:  0.8805031446540881
+# Recall score:  0.8729630861323578
+# Precision score:  0.875209100033456 
+# F1 score:  0.8740462789243277
+# Matthews correlation coefficient: 0.7481688148898544
+```
+
+## [RandomForest-KIRP-Best-model] Best model for KIRP
+```python
+# Read data
+KIRP_ELgene = pd.read_csv('Data/KIRPearlylatelabelCoxProggene005.csv', index_col=0)
+KIRP_Eexpr = pd.read_csv('Data/KIRPearlystageExprandClin.csv', index_col=0)
+KIRP_Lexpr = pd.read_csv('Data/KIRPlatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRP_Eexpr['E_L_Stage'] = 'early'
+KIRP_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRP_Expr = pd.concat([KIRP_Eexpr,KIRP_Lexpr],axis=0)
+# E_L_Stage
+# early    189
+# late      96
+# check the number of early and late stage
+KIRP_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRP_GeneExpr = KIRP_Expr[KIRP_ELgene[KIRP_ELgene['ProgStage']=='earlylate']['gene']]
+KIRP_Target = KIRP_Expr['E_L_Stage']
+# Log2 transformation
+KIRP_GeneExpr = np.log2(KIRP_GeneExpr+1)
+# Standardization
+scaler = StandardScaler()
+KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
+# Create a label encoder
+le = LabelEncoder()
+# Label encoding for target variable
+KIRP_Target = le.fit_transform(KIRP_Target)
+# Split data into training and testing sets
+y = KIRP_Target
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,KIRP_Target,test_size=0.3, stratify=y,random_state=44) # KIRP_Target,test_size=0.3 # random_state=44
+# SMOTE
+sm = SMOTE(random_state=44, sampling_strategy='minority',k_neighbors=40) # random_state=44 # k_neighbors=40
+X_train, y_train = sm.fit_resample(X_train, y_train)
+# Create a model with default parameters
+params = {'n_estimators': 110, 'min_samples_split': 2, 'min_samples_leaf': 1, 'max_samples': 0.9052631578947369, 'max_features': 0.7157894736842105, 'max_depth': 33}
+rf = RandomForestClassifier(**params,random_state=44)
+# Create a StratifiedKFold object
+skf = StratifiedKFold(n_splits=10, random_state=44, shuffle=True)
+# Initialize the list to store the scores
+scores = cross_val_score(rf, X_train, y_train, cv=skf, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scores))
+# Cross-validation scores:[0.85185185 0.88888889 0.88888889 0.85185185 0.80769231 0.96153846 0.96153846 0.88461538 0.84615385 0.80769231]
+# fit model
+rf.fit(X_train, y_train)
+# Predict on test set
+y_pred = rf.predict(X_test)
+print('Confusion matrix: ', confusion_matrix(y_test, y_pred))
+print('Accuracy score: ', accuracy_score(y_test, y_pred), '\n',
+      'Recall score: ', recall_score(y_test, y_pred, average='macro'), '\n',
+      'Precision score: ', precision_score(y_test, y_pred, average='macro'), '\n',
+      'F1 score: ', f1_score(y_test, y_pred, average='macro'), '\n',
+      'Matthews correlation coefficient:', matthews_corrcoef(y_test, y_pred))
+```
+```
+# Best parameters found:  {'n_estimators': 110, 'min_samples_split': 2, 'min_samples_leaf': 1, 'max_samples': 0.9052631578947369, 'max_features': 0.7157894736842105, 'max_depth': 33}
+# Confusion matrix:  
+# [[50  7]
+# [ 9 20]]
+# Accuracy score:  0.813953488372093
+# Recall score:  0.7834240774349668
+# Precision score:  0.7940991839296924
+# F1 score:  0.7881773399014778 
+# Matthews correlation coefficient: 0.5774245920625468
+```
+
+## [Ligthgbm/XGBoost/RandomForest/logisticregression/SVC] Using earlylate prog gene to classify early and late stage for KIRC
 ```python
 # Read data
 KIRC_ELgene = pd.read_csv('Data/KIRCearlylatelabelCoxProggene005.csv', index_col=0)
@@ -637,36 +1467,259 @@ le = LabelEncoder()
 y = le.fit_transform(y)
 X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,y,test_size=0.3, stratify=y,random_state=44) # !!!!!
 w = compute_sample_weight(class_weight='balanced', y=y_train) 
-# 5-Fold Cross-validation scores
-skf = StratifiedKFold(n_splits=5, random_state=44, shuffle=True)
-scoresgbm = cross_val_score(gbm, X_train, y_train, cv=skf, scoring='accuracy')
-scoresxg = cross_val_score(xg, X_train, y_train, cv=skf, scoring='accuracy')
-scoresrf = cross_val_score(rf, X_train, y_train, cv=skf, scoring='accuracy')
-print('Cross-validation scores:{}'.format(scoresgbm),'\n',
-      'Cross-validation scores:{}'.format(scoresxg),'\n',
-      'Cross-validation scores:{}'.format(scoresrf))
-# Plotting the boxplot
-df1 = pd.DataFrame({'Model': ['Lightgbm']*len(scoresgbm), 'Accuracy': scoresgbm})
-df2 = pd.DataFrame({'Model': ['XGBoost']*len(scoresxg), 'Accuracy': scoresxg})
-df3 = pd.DataFrame({'Model': ['Random Forest']*len(scoresrf), 'Accuracy': scoresrf})
-data = pd.concat([df1, df2, df3])
-plt.figure(figsize=(8, 5))
-plt.title("The cross-validation accuracy score of 3 models")
-sns.boxplot(x='Model', y='Accuracy', data=data,hue='Model',width=0.5)
-plt.savefig('Figure/KIRC_DifferentModelboxplot.png', dpi=300)
 # Defult parameters for 3 models
 gbm = lgb.LGBMClassifier(random_state=55,boosting_type = 'gbdt',objective = 'binary', n_jobs = 50, metric = 'binary_logloss') # !!!!!
 xg = xgb.XGBClassifier(use_label_encoder=True, eval_metric='logloss',random_state=55) # !!!!!
 rf = RandomForestClassifier(random_state=55) # !!!!!
+svc = SVC(kernel='linear', random_state=55)
+lr = LogisticRegression(max_iter=200,random_state=55)
+# 5-Fold Cross-validation scores
+skf = StratifiedKFold(n_splits=10, random_state=44, shuffle=True)
+scoresgbm = cross_val_score(gbm, X_train, y_train, cv=skf, scoring='accuracy')
+scoresxg = cross_val_score(xg, X_train, y_train, cv=skf, scoring='accuracy')
+scoresrf = cross_val_score(rf, X_train, y_train, cv=skf, scoring='accuracy')
+scoresvc = cross_val_score(svc, X_train, y_train, cv=skf, scoring='accuracy')
+scoreslr = cross_val_score(lr, X_train, y_train, cv=skf, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scoresgbm),'\n',
+      'Cross-validation scores:{}'.format(scoresxg),'\n',
+      'Cross-validation scores:{}'.format(scoresrf),'\n',
+      'Cross-validation scores:{}'.format(scoresvc),'\n',
+      'Cross-validation scores:{}'.format(scoreslr))
+# Plotting the boxplot
+df1 = pd.DataFrame({'Model': ['Lightgbm']*len(scoresgbm), 'Accuracy': scoresgbm})
+df2 = pd.DataFrame({'Model': ['XGBoost']*len(scoresxg), 'Accuracy': scoresxg})
+df3 = pd.DataFrame({'Model': ['Random Forest']*len(scoresrf), 'Accuracy': scoresrf})
+df4 = pd.DataFrame({'Model': ['SVC']*len(scoresvc), 'Accuracy': scoresvc})
+df5 = pd.DataFrame({'Model': ['Logistic Regression']*len(scoreslr), 'Accuracy': scoreslr})
+data = pd.concat([df1, df2, df3, df4, df5])
+plt.figure(figsize=(8, 5))
+plt.title("The 10 fold cross-validation accuracy score of 5 models")
+sns.boxplot(x='Model', y='Accuracy', data=data,hue='Model',width=0.5)
+plt.savefig('Figure/KIRC_DifferentModelboxplot.png', dpi=300)
 # Train and Test the model
 start = time.time()
 gbm.fit(X_train, y_train, sample_weight=w)
 xg.fit(X_train, y_train, sample_weight=w)
 rf.fit(X_train, y_train, sample_weight=w)
+svc.fit(X_train, y_train, sample_weight=w)
+lr.fit(X_train, y_train, sample_weight=w)
 # Predict on test set
 y_pred_gbm = gbm.predict(X_test)
 y_pred_xg = xg.predict(X_test)
 y_pred_rf = rf.predict(X_test)
+y_pred_svc = svc.predict(X_test)
+y_pred_lr = lr.predict(X_test)
+# Model evaluation accuracy
+acc_gbm = accuracy_score(y_test, y_pred_gbm)
+acc_xg = accuracy_score(y_test, y_pred_xg)
+acc_rf = accuracy_score(y_test, y_pred_rf)
+acc_svc = accuracy_score(y_test, y_pred_svc)
+acc_lr = accuracy_score(y_test, y_pred_lr)
+# print the cross-validation scores as well as the mean of the scores and plus 95% confidence interval
+scores =[scoresgbm,scoresxg,scoresrf,scoresvc,scoreslr]
+for i in scores :
+      mean_accuracy = np.mean(i) * 100 
+      sem = stats.sem(i) * 100  
+      confidence_interval = 1.96 * sem
+    # print combine
+      print(f"The model achieved a 10-fold CV accuracy of {mean_accuracy:.2f}% ± {confidence_interval:.2f}%")
+# print the accuracy score of test set as well as the 95% confidence interval
+acc = [acc_gbm,acc_xg,acc_rf,acc_svc,acc_lr]
+for i in acc :
+      i = i * 100
+      print(f"The model achieved a test set accuracy of {i:.2f}%")
+```
+
+## [Ligthgbm/XGBoost/RandomForest/logisticregression/SVC] Using earlylate prog gene to classify early and late stage for KIRP
+```python
+# Read data
+KIRP_ELgene = pd.read_csv('Data/KIRPearlylatelabelCoxProggene005.csv', index_col=0)
+KIRP_Eexpr = pd.read_csv('Data/KIRPearlystageExprandClin.csv', index_col=0)
+KIRP_Lexpr = pd.read_csv('Data/KIRPlatestageExprandClin.csv', index_col=0)
+# add label for early and late stage
+KIRP_Eexpr['E_L_Stage'] = 'early'
+KIRP_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRP_Expr = pd.concat([KIRP_Eexpr,KIRP_Lexpr],axis=0)
+# E_L_Stage
+# early    189
+# late      96
+# check the number of early and late stage
+KIRP_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRP_GeneExpr = KIRP_Expr[KIRP_ELgene[KIRP_ELgene['ProgStage']=='earlylate']['gene']]
+KIRP_Target = KIRP_Expr['E_L_Stage']
+# Log2 transformation
+KIRP_GeneExpr = np.log2(KIRP_GeneExpr+1)  # !!!!!
+# Standardization
+scaler = StandardScaler()  # !!!!!
+KIRP_GeneExpr = scaler.fit_transform(KIRP_GeneExpr)
+# Split data into training and testing sets
+y = KIRP_Target
+le = LabelEncoder()
+y = le.fit_transform(y)
+X_train, X_test, y_train, y_test = train_test_split(KIRP_GeneExpr,y,test_size=0.3, stratify=y,random_state=44) # !!!!!
+# SMOTE
+sm = SMOTE(random_state=44, sampling_strategy='minority',k_neighbors=40)  # !!!!!
+X_train, y_train = sm.fit_resample(X_train, y_train)
+# Defult parameters for 5 models
+gbm = lgb.LGBMClassifier(random_state=44,boosting_type = 'gbdt',objective = 'binary', n_jobs = 50, metric = 'binary_logloss') # !!!!!
+xg = xgb.XGBClassifier(use_label_encoder=True, eval_metric='logloss',random_state=55) # !!!!!
+rf = RandomForestClassifier(random_state=44) # !!!!!
+svc = SVC(kernel='linear', random_state=44)
+lr = LogisticRegression(random_state=44)
+
+# 5-Fold Cross-validation scores
+skf = StratifiedKFold(n_splits=10, random_state=44, shuffle=True)
+scoresgbm = cross_val_score(gbm, X_train, y_train, cv=skf, scoring='accuracy')
+scoresxg = cross_val_score(xg, X_train, y_train, cv=skf, scoring='accuracy')
+scoresrf = cross_val_score(rf, X_train, y_train, cv=skf, scoring='accuracy')
+scoresvc = cross_val_score(svc, X_train, y_train, cv=skf, scoring='accuracy')
+scoreslr = cross_val_score(lr, X_train, y_train, cv=skf, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scoresgbm),'\n',
+      'Cross-validation scores:{}'.format(scoresxg),'\n',
+      'Cross-validation scores:{}'.format(scoresrf),'\n',
+      'Cross-validation scores:{}'.format(scoresvc),'\n',
+      'Cross-validation scores:{}'.format(scoreslr))
+
+# Plotting the boxplot
+df1 = pd.DataFrame({'Model': ['Lightgbm']*len(scoresgbm), 'Accuracy': scoresgbm})
+df2 = pd.DataFrame({'Model': ['XGBoost']*len(scoresxg), 'Accuracy': scoresxg})
+df3 = pd.DataFrame({'Model': ['Random Forest']*len(scoresrf), 'Accuracy': scoresrf})
+df4 = pd.DataFrame({'Model': ['SVC']*len(scoresvc), 'Accuracy': scoresvc})
+df5 = pd.DataFrame({'Model': ['Logistic Regression']*len(scoreslr), 'Accuracy': scoreslr})
+data = pd.concat([df1, df2, df3, df4, df5])
+plt.figure(figsize=(8, 5))
+plt.title("The 10 fold cross-validation accuracy score of 5 models")
+sns.boxplot(x='Model', y='Accuracy', data=data,hue='Model',width=0.5)
+plt.savefig('Figure/KIRP_DifferentModelboxplot.png', dpi=300)
+# Train and Test the model
+start = time.time()
+gbm.fit(X_train, y_train)
+xg.fit(X_train, y_train)
+rf.fit(X_train, y_train)
+svc.fit(X_train, y_train)
+lr.fit(X_train, y_train)
+# Predict on test set
+y_pred_gbm = gbm.predict(X_test)
+y_pred_xg = xg.predict(X_test)
+y_pred_rf = rf.predict(X_test)
+y_pred_svc = svc.predict(X_test)
+y_pred_lr = lr.predict(X_test)
+# Model evaluation accuracy
+acc_gbm = accuracy_score(y_test, y_pred_gbm)
+acc_xg = accuracy_score(y_test, y_pred_xg)
+acc_rf = accuracy_score(y_test, y_pred_rf)
+acc_svc = accuracy_score(y_test, y_pred_svc)
+acc_lr = accuracy_score(y_test, y_pred_lr)
+# print the cross-validation scores as well as the mean of the scores and plus 95% confidence interval
+scores =[scoresgbm,scoresxg,scoresrf,scoresvc,scoreslr]
+for i in scores :
+      mean_accuracy = np.mean(i) * 100 
+      sem = stats.sem(i) * 100  
+      confidence_interval = 1.96 * sem
+    # print combine
+      print(f"The model achieved a 10-fold CV accuracy of {mean_accuracy:.2f}% ± {confidence_interval:.2f}%")
+# print the accuracy score of test set as well as the 95% confidence interval
+acc = [acc_gbm,acc_xg,acc_rf,acc_svc,acc_lr]
+for i in acc :
+      i = i * 100
+      print(f"The model achieved a test set accuracy of {i:.2f}%")
+```
+
+## [Ligthgbm/XGBoost/RandomForest/logisticregression/SVC] Using earlylate prog gene to classify early and late stage for KIRC
+```python
+# Read data
+KIRC_ELgene = pd.read_csv('Data/KIRCearlylatelabelCoxProggene005.csv', index_col=0)
+KIRC_Eexpr = pd.read_csv('Data/KIRCearlystageExprandClin.csv', index_col=0)
+KIRC_Lexpr = pd.read_csv('Data/KIRClatestageExprandClin.csv', index_col=0)
+GENEcompare = pd.read_csv('Data/probeMap_gencode.v23.annotation.gene.probemap', sep='\t')
+# Using regular expression to extract gene ensemble id with out version .1.2
+GENEcompare['id'] = GENEcompare['id'].str.split('.').str[0]
+# add label for early and late stage
+KIRC_Eexpr['E_L_Stage'] = 'early'
+KIRC_Lexpr['E_L_Stage'] = 'late'
+# Combine early and late stage
+KIRC_Expr = pd.concat([KIRC_Eexpr,KIRC_Lexpr],axis=0)
+# check the number of early and late stage
+KIRC_Expr['E_L_Stage'].value_counts()
+# Extract gene expression use regular expression for earlylate prog gene and colnames E_L_Stage
+KIRC_GeneExpr = KIRC_Expr[KIRC_ELgene[KIRC_ELgene['ProgStage']=='earlylate']['gene']]
+# Change colname(ensemble id) to gene name
+KIRC_GeneExpr.columns = GENEcompare[GENEcompare['id'].isin(KIRC_GeneExpr.columns)]['gene'].values
+KIRC_Target = KIRC_Expr['E_L_Stage']
+# Log2 transformation
+KIRC_GeneExpr = np.log2(KIRC_GeneExpr+1) # !!!!!
+# Standardization
+scaler = StandardScaler() # !!!!!
+KIRC_GeneExpr = scaler.fit_transform(KIRC_GeneExpr)
+# Split data into training and testing sets
+y = KIRC_Target
+le = LabelEncoder()
+y = le.fit_transform(y)
+X_train, X_test, y_train, y_test = train_test_split(KIRC_GeneExpr,y,test_size=0.3, stratify=y,random_state=44) # !!!!!
+w = compute_sample_weight(class_weight='balanced', y=y_train)
+# Defult parameters for 5 models
+gbm = lgb.LGBMClassifier(random_state=44,boosting_type = 'gbdt',objective = 'binary', n_jobs = 50, metric = 'binary_logloss') # !!!!!
+xg = xgb.XGBClassifier(use_label_encoder=True, eval_metric='logloss',random_state=55) # !!!!!
+rf = RandomForestClassifier(random_state=44) # !!!!!
+svc = SVC(kernel='linear', random_state=44)
+lr = LogisticRegression(random_state=44)
+# 5-Fold Cross-validation scores
+skf = StratifiedKFold(n_splits=10, random_state=44, shuffle=True)
+scoresgbm = cross_val_score(gbm, X_train, y_train, cv=skf, scoring='accuracy')
+scoresxg = cross_val_score(xg, X_train, y_train, cv=skf, scoring='accuracy')
+scoresrf = cross_val_score(rf, X_train, y_train, cv=skf, scoring='accuracy')
+scoresvc = cross_val_score(svc, X_train, y_train, cv=skf, scoring='accuracy')
+scoreslr = cross_val_score(lr, X_train, y_train, cv=skf, scoring='accuracy')
+print('Cross-validation scores:{}'.format(scoresgbm),'\n',
+      'Cross-validation scores:{}'.format(scoresxg),'\n',
+      'Cross-validation scores:{}'.format(scoresrf),'\n',
+      'Cross-validation scores:{}'.format(scoresvc),'\n',
+      'Cross-validation scores:{}'.format(scoreslr))
+# Plotting the boxplot
+df1 = pd.DataFrame({'Model': ['Lightgbm']*len(scoresgbm), 'Accuracy': scoresgbm})
+df2 = pd.DataFrame({'Model': ['XGBoost']*len(scoresxg), 'Accuracy': scoresxg})
+df3 = pd.DataFrame({'Model': ['Random Forest']*len(scoresrf), 'Accuracy': scoresrf})
+df4 = pd.DataFrame({'Model': ['SVC']*len(scoresvc), 'Accuracy': scoresvc})
+df5 = pd.DataFrame({'Model': ['Logistic Regression']*len(scoreslr), 'Accuracy': scoreslr})
+data = pd.concat([df1, df2, df3, df4, df5])
+plt.figure(figsize=(8, 5))
+plt.title("The 10 fold cross-validation accuracy score of 5 models")
+sns.boxplot(x='Model', y='Accuracy', data=data,hue='Model',width=0.5)
+plt.savefig('Figure/KIRC_DifferentModelboxplot.png', dpi=300)
+# Train and Test the model
+start = time.time()
+gbm.fit(X_train, y_train, sample_weight=w)
+xg.fit(X_train, y_train, sample_weight=w)
+rf.fit(X_train, y_train, sample_weight=w)
+svc.fit(X_train, y_train, sample_weight=w)
+lr.fit(X_train, y_train, sample_weight=w)
+# Predict on test set
+y_pred_gbm = gbm.predict(X_test)
+y_pred_xg = xg.predict(X_test)
+y_pred_rf = rf.predict(X_test)
+y_pred_svc = svc.predict(X_test)
+y_pred_lr = lr.predict(X_test)
+# Model evaluation accuracy
+acc_gbm = accuracy_score(y_test, y_pred_gbm)
+acc_xg = accuracy_score(y_test, y_pred_xg)
+acc_rf = accuracy_score(y_test, y_pred_rf)
+acc_svc = accuracy_score(y_test, y_pred_svc)
+acc_lr = accuracy_score(y_test, y_pred_lr)
+# print the cross-validation scores as well as the mean of the scores and plus 95% confidence interval
+scores =[scoresgbm,scoresxg,scoresrf,scoresvc,scoreslr]
+for i in scores :
+      mean_accuracy = np.mean(i) * 100 
+      sem = stats.sem(i) * 100  
+      confidence_interval = 1.96 * sem
+    # print combine
+      print(f"The model achieved a 10-fold CV accuracy of {mean_accuracy:.2f}% ± {confidence_interval:.2f}%")
+# print the accuracy score of test set as well as the 95% confidence interval
+acc = [acc_gbm,acc_xg,acc_rf,acc_svc,acc_lr]
+for i in acc :
+      i = i * 100
+      print(f"The model achieved a test set accuracy of {i:.2f}%")
 ```
 
 # END
